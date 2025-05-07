@@ -1,0 +1,44 @@
+### Register user
+POST http://localhost:5000/api/auth/register
+Content-Type: application/json
+
+{
+  "userName": "super",
+  "email": "super@admin.com",
+  "password": "password123"
+}
+
+
+### Login User
+POST http://localhost:5000/api/auth/login
+Content-Type: application/json
+
+{
+    "email": "super@admin.com",
+    "password": "password123"
+}
+
+### Creating Activity
+POST http://localhost:5000/api/activities/create
+Content-Type: application/json
+
+{
+  "title": "Coding Bootcamp",
+  "description": "A one-day hands-on coding bootcamp for students.",
+  "location": "Graphic Era University"
+}
+
+### Get all Activity
+http://localhost:5000/api/activities
+
+
+### Create Booking (protected)
+POST http://localhost:5000/api/bookings
+Content-Type: application/json
+
+{
+  "activityId": "681bdf14a48b4d8c2840f956"
+}
+
+### Get All Booking (protected)
+http://localhost:5000/api/bookings
