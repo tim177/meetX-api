@@ -1,42 +1,39 @@
-const { promisify } = require("util");
 const User = require("../models/userModel");
 const jwt = require("jsonwebtoken");
-
-const signedToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET_KEY, {
-    expiresIn: process.env.JWT_EXPIRES_IN,
-  });
-};
-
-const createSendToken = (user, statusCode, res) => {
-  const userToken = signedToken(user._id);
-  const cookieOption = {
-    expires: new Date(
-      Date.now() + process.env.JWT_COOKIE_EXPIRES_IN * 24 * 60 * 60 * 1000
-    ),
-    httpOnly: true,
-  };
-
-  res.cookie("jwt", userToken, cookieOption);
-
-  user.password = undefined;
-
-  res.status(statusCode).json({
-    status: "success",
-    userToken,
-    data: {
-      user,
-    },
-  });
-};
+const { validationResult } = require("express-validator");
+const { createSendToken } = require("../utils/tokenUtils");
 
 //REGISTER the user
 exports.register = async function (req, res, next) {
-  const { userName, email, password } = req.body;
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        status: "failure",
+        message: "Validation failed",
+        errors: errors.array(),
+      });
+    }
 
-  const newUser = await User.create({ userName, email, password });
+    const { userName, email, password } = req.body;
 
-  createSendToken(newUser, 200, res);
+    //check if email already exists
+    const existingEmail = await User.findOne({ email });
+    if (existingEmail) {
+      return res.status(400).json({
+        status: "failure",
+        message: "Email already in use",
+      });
+    }
+
+    const newUser = await User.create({ userName, email, password });
+    createSendToken(newUser, 201, res);
+  } catch (error) {
+    res.status(500).json({
+      status: "error",
+      message: error.message || "Error registering user",
+    });
+  }
 };
 
 //LOG-IN the user
@@ -81,40 +78,43 @@ exports.logout = function (req, res, next) {
 };
 
 //PROTECT the route
-//TODO: Change this again
-exports.protect = async function (req, res, next) {
-  let token;
+exports.protect = async (req, res, next) => {
+  try {
+    let token;
+    if (
+      req.headers.authorization &&
+      req.headers.authorization.startsWith("Bearer")
+    ) {
+      token = req.headers.authorization.split(" ")[1];
+    } else if (req.cookies && req.cookies.jwt) {
+      token = req.cookies.jwt;
+    }
 
-  if (
-    req.headers.authorization &&
-    req.headers.authorization.startsWith("Bearer")
-  ) {
-    token = req.headers.authorization.split(" ")[1];
-  } else if (req.cookies.jwt) {
-    token = req.cookies.jwt;
-  }
+    if (!token) {
+      return res.status(401).json({
+        status: "failure",
+        message: "You are not logged in. Please log in to get access",
+      });
+    }
 
-  if (!token) {
+    //verify the token
+    const decoded = await jwt.verify(token, process.env.JWT_SECRET_KEY);
+
+    const currentUser = await User.findById(decoded.id);
+    if (!currentUser) {
+      return res.status(401).json({
+        status: "failure",
+        message: "The user belonging to this token no longer exists",
+      });
+    }
+
+    //Grant access to protected route
+    req.user = currentUser;
+    next();
+  } catch (error) {
     return res.status(401).json({
       status: "failure",
-      message: "You are not logged in. Please log in to get access",
+      message: "Invalid token. Please log in again",
     });
   }
-
-  const decodedToken = await promisify(jwt.verify)(
-    token,
-    process.env.JWT_SECRET_KEY
-  );
-
-  const currentUser = await User.findById(decodedToken.id);
-  if (!currentUser) {
-    res.status(401).json({
-      status: "failure",
-      message: "The user does no longer exist",
-    });
-  }
-
-  req.user = currentUser;
-
-  next();
 };
