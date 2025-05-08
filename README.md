@@ -6,6 +6,13 @@ A simple RESTful API for managing activities and bookings.
 
 MeetX API allows users to register, log in, view activities, and book them. The API includes public endpoints for viewing activities and protected endpoints for user authentication and bookings.
 
+## 📬 Postman Collection
+
+You can explore and test the API endpoints using the Postman collection below:
+
+🔗 [MeetX API Collection on Postman](https://api.postman.com/collections/42108534-043fc83f-1a3e-42cf-a13a-2eaba24d43a3?access_key=PMAT-01JTPJNR7353SVK2H3E083ARYR)
+
+
 ## Tech Stack
 
 - Node.js
